@@ -1,0 +1,1 @@
+pandoc -o rapport.pdf rapport.md --template=theme -V author="Maxime Dolores, Robin Pourtaud" -V titlepage="true" -V toc="true" -V logo="favicon.png" -V subtitle="true" -V graphics="true" -V toc-title="Table des matières"
