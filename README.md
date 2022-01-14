@@ -9,4 +9,4 @@ Liens utiles :
 - https://github.com/tkipf/gcn
 - https://www.cs.mcgill.ca/~wlh/grl_book/
 - https://datalore.jetbrains.com/notebook/BNGt5j8gi9Dt6AHQeg7zPw/HEFoMsZ5QXcS0g98jZ17ZT/
-
+- https://drive.google.com/file/d/1ExeekKTDBubTsnt8bu2Je5K84CRLjR6B/view
