@@ -1,0 +1,13 @@
+name: Gitlab mirror
+on: push
+jobs:
+  git-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: git-sync
+        uses: wei/git-sync@v3
+        with:
+          source_repo: "https://mdolr:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/mdolr/ter.git"
+          source_branch: "main"
+          destination_repo: "https://mdolr:${{ secrets.GITLAB_PASSWORD }}@gitlab.univ-nantes.fr/mdolr/ter.git"
+          destination_branch: "main"
