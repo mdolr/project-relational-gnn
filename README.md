@@ -20,6 +20,19 @@ Objectif du vendredi : approfondir le sujet et se renseigner sur l'état de l'ar
 - Mise en place d'une synchronisation Github - Gitlab
 - Visionnage de vidéos sur les GNNs et leurs applications
 
+### Semaine du 28 au 4 février
+
+Objectif du vendredi : Continuer la bibliographie et visionnage / pratique de tutoriels avec Pytorch Geometric
+
+- Visionnage + entrainement sur les [tutoriels PyTorch Geometric](https://pytorch-geometric.readthedocs.io/en/latest/notes/colabs.html)
+- Lecture de papiers
+
+### Semaine du 4 février au 11 février
+
+Objectif du vendredi : Continuer la bibliographie
+
+- Lecture de papiers (notamment sur les méthodes transX, MNE, DistMult)
+
 ## Bibliographie
 
 1. [Graph Representation Learning Book](https://www.cs.mcgill.ca/~wlh/grl_book/)
