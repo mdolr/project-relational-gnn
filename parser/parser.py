@@ -1,9 +1,12 @@
 import csv
 import json
-import flatdict
 import requests
 import wikipediaapi
+from tqdm import tqdm
 from slugify import slugify
+
+from urllib.parse import urlparse
+from urllib.parse import parse_qs
 
 
 wiki = wikipediaapi.Wikipedia('en')
@@ -15,7 +18,7 @@ materials_file_path = '../data/materials.csv'
 stored_concepts_json_path = '../data/concepts.json'
 
 
-def get_materials(url=None, limit=20, offset=0):
+def get_materials(url=None, limit=20, offset=0, debug=False):
     """
     Get OER materials from the API
     """
@@ -23,6 +26,12 @@ def get_materials(url=None, limit=20, offset=0):
     # So we can pass a next page URL without having to rebuild it
     if url is None:
         url = BASE_URL + f'/oer_materials?limit={limit}&offset={offset}'
+
+    if debug:
+        parsed_url = urlparse(url)
+        query_params = parse_qs(parsed_url.query)
+        print(
+            f'Getting materials from ID {query_params["offset"][0]} to {int(query_params["offset"][0]) + int(query_params["limit"][0])}...')
 
     # Get the data and return the JSON
     response = requests.get(url)
@@ -61,7 +70,7 @@ def crawl(next_page_url=None, first=True):
 
     if next_page_url is not None or (next_page_url is None and first):
         # Get the list of materials
-        materials = get_materials(url=next_page_url)
+        materials = get_materials(url=next_page_url, debug=True)
         data = materials['oer_materials']
 
         # Then from the response, get the next page URL
@@ -70,12 +79,15 @@ def crawl(next_page_url=None, first=True):
             next_page_url = materials['links']['next']
 
         # For each material in the data list
-        for material in data:
-            for concept in material['wikipedia']:
+        for material in tqdm(data):
+            for concept in tqdm(material['wikipedia'], leave=False):
                 if concept['secName']:
                     # Get the concept from wikipedia
                     # to get data as the page length
                     concept['slug'] = slugify(concept['secName'])
+
+                    links_writer.writerow(
+                        {'concept_slug': concept['slug'], 'material_id': material['material_id'], 'target': concept['pageRank']})
 
                     if not concept['slug'] in stored_concepts:
                         stored_concepts.append(concept['slug'])
@@ -84,9 +96,6 @@ def crawl(next_page_url=None, first=True):
 
                         wikipedia_data = get_concept(concept['secName'])
                         concept.update(wikipedia_data)
-
-                        links_writer.writerow(
-                            {'concept_slug': concept['slug'], 'material_id': material['material_id'], 'target': concept['pageRank']})
 
                         concept.pop('pageRank')
 
@@ -101,12 +110,19 @@ def crawl(next_page_url=None, first=True):
             material['provider_domain'] = material['provider']['provider_domain']
             material.pop('provider')
 
-            material['description'] = material['description'].replace(
-                '\r\n', ' ') if material['description'] else None
+            if material['description']:
+                material['description'] = material['description'].replace(
+                    '\r\n', ' ')
+                material['description'] = material['description'].replace(
+                    '\n\r', ' ')
+                material['description'] = material['description'].replace(
+                    '\n', ' ')
+            else:
+                material['description'] = ''
 
             materials_writer.writerow(material)
 
-            crawl(next_page_url=next_page_url, first=False)
+        crawl(next_page_url=next_page_url, first=False)
 
 
 with open(links_file_path, 'w', newline='') as links_file:
