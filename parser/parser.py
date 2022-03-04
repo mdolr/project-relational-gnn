@@ -17,6 +17,9 @@ concepts_file_path = '../data/concepts.csv'
 materials_file_path = '../data/materials.csv'
 stored_concepts_json_path = '../data/concepts.json'
 
+concept_tag = 0
+material_tag = 0
+
 
 def get_materials(url=None, limit=20, offset=0, debug=False):
     """
@@ -58,7 +61,12 @@ def get_concept(page_title):
 
     return {
         'title': page.title,
-        'description': page.summary.replace('\n', ' '),
+        'description': page.summary.replace(
+            '\r\n', ' ').replace(
+            '\n\r', ' ').replace('\n', ' ').replace('\r', ' ').replace(',', ' '),
+        'text': page.text.replace(
+            '\r\n', ' ').replace(
+            '\n\r', ' ').replace('\n', ' ').replace('\r', ' ').replace(',', ' '),
         'page_length': len(page.text)
     }
 
@@ -79,49 +87,67 @@ def crawl(next_page_url=None, first=True):
             next_page_url = materials['links']['next']
 
         # For each material in the data list
-        for material in tqdm(data):
-            for concept in tqdm(material['wikipedia'], leave=False):
-                if concept['secName']:
-                    # Get the concept from wikipedia
-                    # to get data as the page length
-                    concept['slug'] = slugify(concept['secName'])
+        for material in tqdm(data, leave=False):
+            if (material['description'] is not(None) and len(material['description']) > 50) and material['language'] == 'en':
+                global material_tag
+                material['tag'] = material_tag
 
-                    links_writer.writerow(
-                        {'concept_slug': concept['slug'], 'material_id': material['material_id'], 'target': concept['pageRank']})
+                for concept in tqdm(material['wikipedia'], leave=False):
+                    if concept['secName']:
+                        global concept_tag
+                        concept['tag'] = concept_tag
+                        # Get the concept from wikipedia
+                        # to get data as the page length
+                        concept['slug'] = slugify(concept['secName'])
 
-                    if not concept['slug'] in stored_concepts:
-                        stored_concepts.append(concept['slug'])
-                        stored_concepts_json_file.seek(0)
-                        json.dump(stored_concepts, stored_concepts_json_file)
+                        if concept['slug'] in stored_concepts:
+                            links_writer.writerow(
+                                {'concept_slug': concept['slug'], 'material_id': material['material_id'], 'target': concept['pageRank'], 'material_tag': material_tag, 'concept_tag': concept_tag})
 
-                        wikipedia_data = get_concept(concept['secName'])
-                        concept.update(wikipedia_data)
+                        else:
+                            wikipedia_data = get_concept(concept['secName'])
+                            concept.update(wikipedia_data)
 
-                        concept.pop('pageRank')
+                            if concept['text'] is not None and len(concept['text']) > 50:
+                                stored_concepts.append(concept['slug'])
+                                stored_concepts_json_file.seek(0)
+                                json.dump(stored_concepts,
+                                          stored_concepts_json_file)
 
-                        concepts_writer.writerow(concept)
+                                links_writer.writerow(
+                                    {'concept_slug': concept['slug'], 'material_id': material['material_id'], 'target': concept['pageRank'], 'material_tag': material_tag, 'concept_tag': concept_tag})
 
-            material.pop('wikipedia')
-            material.pop('content_ids')
-            material.pop('metadata')
+                                concept.pop('pageRank')
 
-            material['provider_id'] = material['provider']['provider_id']
-            material['provider_name'] = material['provider']['provider_name']
-            material['provider_domain'] = material['provider']['provider_domain']
-            material.pop('provider')
+                                concepts_writer.writerow(concept)
+                                concept_tag += 1
 
-            if material['description']:
-                material['description'] = material['description'].replace(
-                    '\r\n', ' ')
-                material['description'] = material['description'].replace(
-                    '\n\r', ' ')
-                material['description'] = material['description'].replace(
-                    '\n', ' ')
+                material.pop('wikipedia')
+                material.pop('content_ids')
+                material.pop('metadata')
+
+                material['provider_id'] = material['provider']['provider_id']
+                material['provider_name'] = material['provider']['provider_name']
+                material['provider_domain'] = material['provider']['provider_domain']
+                material.pop('provider')
+
+                if material['description']:
+                    material['description'] = material['description'].replace(
+                        '\r\n', ' ')
+                    material['description'] = material['description'].replace(
+                        '\n\r', ' ')
+                    material['description'] = material['description'].replace(
+                        '\n', ' ').replace('\r', '')
+                else:
+                    material['description'] = ''
+
+                materials_writer.writerow(material)
+                material_tag += 1
             else:
-                material['description'] = ''
+                continue
 
-            materials_writer.writerow(material)
-
+        # Once we're done with all the materials
+        # Crawl next page
         crawl(next_page_url=next_page_url, first=False)
 
 
@@ -133,11 +159,11 @@ with open(links_file_path, 'w', newline='') as links_file:
                 stored_concepts = []  # json.load(stored_concepts_json_file)
 
                 links_writer = csv.DictWriter(
-                    links_file, fieldnames=['concept_slug', 'material_id', 'target'])
+                    links_file, fieldnames=['material_tag', 'concept_tag', 'concept_slug', 'material_id', 'target'])
                 concepts_writer = csv.DictWriter(
-                    concepts_file, fieldnames=['title', 'description', 'page_length', 'slug', 'uri', 'name', 'secUri', 'secName', 'lang', 'supportLen'])
+                    concepts_file, fieldnames=['tag', 'slug', 'title', 'description', 'text', 'page_length',  'uri', 'name', 'secUri', 'secName', 'lang', 'supportLen'])
                 materials_writer = csv.DictWriter(
-                    materials_file, fieldnames=['material_id', 'title', 'description', 'url', 'language', 'creation_date', 'retrieved_date', 'type', 'extension', 'mimetype', 'provider_id', 'provider_name', 'provider_domain', 'license'])
+                    materials_file, fieldnames=['tag', 'material_id', 'title', 'description', 'url', 'language', 'creation_date', 'retrieved_date', 'type', 'extension', 'mimetype', 'provider_id', 'provider_name', 'provider_domain', 'license'])
 
                 links_writer.writeheader()
                 concepts_writer.writeheader()
