@@ -1,6 +1,7 @@
 # TER : Graph Neural Network
 
-[Sujet du TER](https://drive.google.com/file/d/1ExeekKTDBubTsnt8bu2Je5K84CRLjR6B/view)
+- [Sujet du TER](https://drive.google.com/file/d/1ExeekKTDBubTsnt8bu2Je5K84CRLjR6B/view)
+- [Rapport](https://www.overleaf.com/read/hbgfzwzzjfhb)
 
 ## Historique
 
