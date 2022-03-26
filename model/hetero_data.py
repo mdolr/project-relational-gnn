@@ -1,7 +1,7 @@
 import torch
 import pandas as pd
 from torch_geometric.data import HeteroData
-
+import pickle
 
 concepts_path = '../data2/latent_concepts.csv'
 materials_path = '../data2/latent_materials.csv'
@@ -12,7 +12,8 @@ def load_node_csv(path, index_col, encoders=None, **kwargs):
     df = pd.read_csv(path, index_col=index_col, **kwargs)
     mapping = {index: i for i, index in enumerate(df.index.unique())}
 
-    x = df.values
+    x = torch.tensor(df.values, dtype=torch.double)
+    # x = x.to(torch.double)
 
     if encoders is not None:
         xs = [encoder(df[col]) for col, encoder in encoders.items()]
@@ -27,9 +28,13 @@ def load_edge_csv(path, src_index_col, src_mapping, dst_index_col, dst_mapping,
 
     src = [src_mapping[index] for index in df[src_index_col]]
     dst = [dst_mapping[index] for index in df[dst_index_col]]
-    edge_index = torch.tensor([src, dst])
 
-    edge_attr = df['target']
+    edge_index = torch.tensor([src, dst], dtype=torch.double)
+    # edge_index = edge_index.to(torch.double)
+
+    edge_attr = torch.tensor(df['target'], dtype=torch.double)
+    # edge_attr = edge_attr.to(torch.double)
+
     if encoders is not None:
         edge_attrs = [encoder(df[col]) for col, encoder in encoders.items()]
         edge_attr = torch.cat(edge_attrs, dim=-1)
@@ -44,7 +49,6 @@ materials, materials_mapping = load_node_csv(
 concepts, concepts_mapping = load_node_csv(
     concepts_path, index_col=0)
 
-print(materials)
 
 # Initialize a HeteroData object
 data = HeteroData(
@@ -63,3 +67,4 @@ data['materials', 'links', 'concepts'].edge_index = edge_index
 data['materials', 'links', 'concepts'].edge_label = edge_label
 
 print(data)
+pickle.dump(data, open('../data2/data2.pkl', 'wb'))
