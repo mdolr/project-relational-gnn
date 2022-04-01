@@ -67,4 +67,4 @@ data['materials', 'links', 'concepts'].edge_index = edge_index
 data['materials', 'links', 'concepts'].edge_label = edge_label
 
 print(data)
-pickle.dump(data, open('../data2/data2.pkl', 'wb'))
+pickle.dump(data, open('../data/data.pkl', 'wb'))
