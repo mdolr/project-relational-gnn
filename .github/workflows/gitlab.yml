@@ -8,6 +8,6 @@ jobs:
         uses: wei/git-sync@v3
         with:
           source_repo: "https://mdolr:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/mdolr/ter.git"
-          source_branch: "dev"
+          source_branch: "main"
           destination_repo: "https://mdolr:${{ secrets.GITLAB_PASSWORD }}@gitlab.univ-nantes.fr/mdolr/ter.git"
-          destination_branch: "dev"
+          destination_branch: "main"
