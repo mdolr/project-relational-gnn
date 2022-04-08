@@ -13,7 +13,10 @@ import torch.nn.functional as F
 from torch.nn import Linear, Softmax
 
 import torch_geometric.transforms as T
-from torch_geometric.nn import GATConv, to_hetero
+from torch_geometric.nn import GATConv, SuperGATConv, SAGEConv, GATv2Conv, GCNConv, to_hetero
+from torchsummary import summary
+
+import matplotlib.pyplot as plt
 
 import pickle
 
@@ -116,12 +119,12 @@ class EdgeDecoder(torch.nn.Module):
         row, col = edge_label_index
         z = torch.cat([z_dict['materials'][row],
                        z_dict['concepts'][col]], dim=-1)
-
+        k = z
         z = self.lin1(z).relu()
         z = self.lin2(z)
 
         # Return the softmax of the output
-        return self.softmax(z)
+        return self.softmax(z), k
 
 
 class Model(torch.nn.Module):
@@ -133,10 +136,11 @@ class Model(torch.nn.Module):
 
     def forward(self, x_dict, edge_index_dict, edge_label_index):
         z_dict = self.encoder(x_dict, edge_index_dict)
-        return self.decoder(z_dict, edge_label_index)
+        probabilities, k = self.decoder(z_dict, edge_label_index)
+        return probabilities, z_dict, k
 
 
-model = Model(hidden_channels=128).to(device)
+model = Model(hidden_channels=32).to(device)
 
 # Due to lazy initialization, we need to run one model step so the number
 # of parameters can be inferred:
@@ -156,14 +160,16 @@ with torch.no_grad():
 
 optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
+print(model)
+
 
 def train():
     model.train()
     optimizer.zero_grad()
 
     # Get outputs from the model
-    pred = model(train_data.x_dict, train_data.edge_index_dict,
-                 train_data['materials', 'links', 'concepts'].edge_label_index)  # train_data['materials', 'concepts'].edge_label_index
+    pred, _1, _2 = model(train_data.x_dict, train_data.edge_index_dict,
+                         train_data['materials', 'links', 'concepts'].edge_label_index)  # train_data['materials', 'concepts'].edge_label_index
 
     # Predictions by the model are tensors where the sum of probabilities = 1
     # we just get the argmax from those tensors for each prediction
@@ -185,9 +191,9 @@ def train():
 @torch.no_grad()
 def test(data):
     model.eval()
-    pred = model(data.x_dict, data.edge_index_dict,
-                 data['materials', 'links', 'concepts'].edge_label_index)
-    pred = pred.clamp(min=0, max=5)
+    pred, _1, _2 = model(data.x_dict, data.edge_index_dict,
+                         data['materials', 'links', 'concepts'].edge_label_index)
+    # pred = pred.clamp(min=0, max=5)
     target = data['materials', 'links', 'concepts'].edge_label.long()
     target = torch.nn.functional.one_hot(target).to(torch.float)
 
@@ -211,20 +217,27 @@ def test(data):
     return float(rmse)
 """
 
-EPOCHS = 300
+EPOCHS = 300  # 300
 current_epoch = 0
-train_rmse = None
-val_rmse = None
-test_rmse = None
+loss_train = None
+loss_val = None
+loss_test = None
 loss = None
+
+losses = []
 
 for epoch in range(1, EPOCHS):
     loss = train()
-    train_rmse = test(train_data)
-    val_rmse = test(val_data)
-    test_rmse = test(test_data)
-    print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Train: {train_rmse:.4f}, '
-          f'Val: {val_rmse:.4f}, Test: {test_rmse:.4f}')
+    loss_train = test(train_data)
+    loss_val = test(val_data)
+    loss_test = test(test_data)
+
+    print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Train: {loss_train:.4f}, '
+          f'Val: {loss_val:.4f}, Test: {loss_test:.4f}')
+
+    losses.append({'epoch': epoch, 'training': loss, 'test_training': loss_train,
+                  'test_val': loss_val, 'test_test': loss_test})
+
     current_epoch = epoch
 
 torch.save({
@@ -234,8 +247,17 @@ torch.save({
     'loss': loss,
 }, './model.pt')
 
-"""
 activation = {}
+
+metrics = ['training', 'test_training', 'test_val', 'test_test']
+for metric in metrics:
+    plt.plot(range(len(losses)), [x[metric] for x in losses])
+
+plt.legend(metrics)
+plt.title('Metric evolution')
+plt.xlabel('Epochs')
+plt.ylabel('Cross Entropy loss')
+plt.show()
 
 
 def get_activation(name):
@@ -244,7 +266,15 @@ def get_activation(name):
     return hook
 
 
-model.decoder.lin1.register_forward_hook(get_activation('lin1'))
-output = model(train_data)
-activation['fc3']
+print('Recuperation de la couche n-1 du modele')
+model.encoder.conv2.register_forward_hook(get_activation('conv2'))
+output, z_dict, k = model(train_data.x_dict, train_data.edge_index_dict,
+                          train_data['materials', 'links', 'concepts'].edge_label_index)
+
+print(k.shape)
+"""
+model.encoder.conv2.register_forward_hook(get_activation('conv2'))
+output = model(train_data.x_dict, train_data.edge_index_dict,
+               train_data['materials', 'links', 'concepts'].edge_label_index)
+print(output)
 """
