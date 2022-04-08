@@ -6,6 +6,8 @@ import os.path as osp
 import sys
 import traceback
 
+import numpy as np
+
 import torch
 import torch.nn.functional as F
 from torch.nn import Linear, Softmax
@@ -49,7 +51,7 @@ data['concepts', 'rev_links', 'materials']['edge_label'] = data['concepts',
                                                                 'rev_links', 'materials']['edge_label'].long()
 """
 # del data['movie', 'rev_rates', 'user'].edge_label  # Remove "reverse" label.
-
+# print(data['materials', 'links', 'concepts'].edge_label.shape)
 # Perform a link-level split into training, validation, and test edges:
 train_data, val_data, test_data = T.RandomLinkSplit(
     num_val=0.1,
@@ -61,8 +63,8 @@ train_data, val_data, test_data = T.RandomLinkSplit(
     rev_edge_types=[('concepts', 'rev_links', 'materials')],
 )(data)
 
-print(train_data['materials', 'links', 'concepts'].edge_label.shape,
-      train_data['materials', 'links', 'concepts'].edge_label)
+# print(train_data['materials', 'links', 'concepts'].edge_label.shape,
+#      train_data['materials', 'links', 'concepts'].edge_label)
 
 # TODO: Use pageRank as weight for the loss of each edge?
 if args.use_weighted_loss:
@@ -78,7 +80,8 @@ def weighted_mse_loss(pred, target, weight=None):
     return (weight * (pred - target.to(pred.dtype)).pow(2)).mean()
 """
 
-loss_function = F.cross_entropy
+
+loss_function = torch.nn.CrossEntropyLoss()
 
 
 class GNNEncoder(torch.nn.Module):
@@ -133,7 +136,7 @@ class Model(torch.nn.Module):
         return self.decoder(z_dict, edge_label_index)
 
 
-model = Model(hidden_channels=48).to(device)
+model = Model(hidden_channels=128).to(device)
 
 # Due to lazy initialization, we need to run one model step so the number
 # of parameters can be inferred:
@@ -164,16 +167,15 @@ def train():
 
     # Predictions by the model are tensors where the sum of probabilities = 1
     # we just get the argmax from those tensors for each prediction
-    pred = torch.argmax(pred, dim=1).to(torch.float)
+    # pred = torch.argmax(pred, dim=1)
 
     # We get the real value we should be predicting (1=exists, 0=does not exist)
     target = train_data['materials', 'links',
-                        'concepts'].edge_label.to(torch.float)
-
-    print(pred.shape, target.shape)
+                        'concepts'].edge_label.to(torch.long)
+    target = torch.nn.functional.one_hot(target).to(torch.float)
 
     # Calculate the loss
-    loss = F.cross_entropy(pred, target, weight=weight)
+    loss = loss_function(pred, target)
 
     loss.backward()
     optimizer.step()
@@ -186,12 +188,30 @@ def test(data):
     pred = model(data.x_dict, data.edge_index_dict,
                  data['materials', 'links', 'concepts'].edge_label_index)
     pred = pred.clamp(min=0, max=5)
-    target = data['materials', 'links', 'concepts'].edge_label.float()
+    target = data['materials', 'links', 'concepts'].edge_label.long()
+    target = torch.nn.functional.one_hot(target).to(torch.float)
+
+    # Calculate the loss
+    loss = loss_function(pred, target)
+
+    # loss.backward()
+    return float(loss)
+
+
+"""
+@torch.no_grad()
+def test(data):
+    model.eval()
+    pred = model(data.x_dict, data.edge_index_dict,
+                 data['materials', 'links', 'concepts'].edge_label_index)
+    pred = pred.clamp(min=0, max=5)
+    target = data['materials', 'links', 'concepts'].edge_label.long()
+    target = torch.nn.functional.one_hot(target).to(torch.float)
     rmse = F.mse_loss(pred, target).sqrt()
     return float(rmse)
+"""
 
-
-EPOCHS = 30
+EPOCHS = 300
 current_epoch = 0
 train_rmse = None
 val_rmse = None
