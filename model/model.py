@@ -20,10 +20,6 @@ import matplotlib.pyplot as plt
 
 import pickle
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--use_weighted_loss', action='store_true',
-                    help='Whether to use weighted MSE loss.')
-args = parser.parse_args()
 
 data = None
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -68,20 +64,6 @@ train_data, val_data, test_data = T.RandomLinkSplit(
 
 # print(train_data['materials', 'links', 'concepts'].edge_label.shape,
 #      train_data['materials', 'links', 'concepts'].edge_label)
-
-# TODO: Use pageRank as weight for the loss of each edge?
-if args.use_weighted_loss:
-    weight = torch.bincount(
-        train_data['materials', 'links', 'concepts'].edge_label)
-    weight = weight.max() / weight
-else:
-    weight = None
-
-"""
-def weighted_mse_loss(pred, target, weight=None):
-    weight = 1. if weight is None else weight[target].to(pred.dtype)
-    return (weight * (pred - target.to(pred.dtype)).pow(2)).mean()
-"""
 
 
 loss_function = torch.nn.CrossEntropyLoss()
