@@ -7,12 +7,11 @@ import tqdm
 from gensim.test.utils import common_texts
 from gensim.models.doc2vec import Doc2Vec, TaggedDocument
 
-links_file_path = '../data2/links_short.csv'
-concepts_file_path = '../data2/concepts_short.csv'
-materials_file_path = '../data2/materials_short.csv'
+concepts_file_path = '../data/corrected_concepts_short.csv'
+materials_file_path = '../data/materials_short.csv'
 
-output_file_concepts = '../data2/latent_concepts.csv'
-output_file_materials = '../data2/latent_materials.csv'
+output_file_concepts = '../data/corrected_latent_concepts.csv'
+output_file_materials = '../data/latent_materials.csv'
 
 
 # Load the documents
@@ -20,11 +19,15 @@ print('Loading documents...')
 concepts = pd.read_csv(concepts_file_path)
 materials = pd.read_csv(materials_file_path)
 
+concepts['index'] = concepts.index
+
+print(concepts)
+
 # Grab the text from each document
 concepts_text = concepts['text']
 materials_text = materials['description']
 
-concepts_tags = concepts['tag']
+concepts_tags = concepts['index']
 materials_tags = materials['tag']
 
 # Split the text word by word
@@ -59,7 +62,7 @@ def get_material_vector(row):
 
 
 def get_concept_vector(row):
-    concept_text = concepts_text[row['tag']]
+    concept_text = concepts_text[row['index']]
     return concepts_model.infer_vector(concept_text)
 
 
@@ -80,36 +83,3 @@ concepts_output.to_csv(output_file_concepts)
 materials_output = pd.concat([pd.DataFrame(
     materials[x].values.tolist()) for x in ['vector']], axis=1)
 materials_output.to_csv(output_file_materials)
-
-"""
-with open(materials_file_path, newline='') as materials_file:
-    with open(output_file_materials, 'w', newline='') as output_materials:
-        for i, row in enumerate(materials_file):
-            if i != 0:
-                tag = int(row[0])
-
-                material_text = materials_text[tag]
-                material_vector = materials_model.infer_vector(material_text)
-
-                final_vector = [tag] + list(material_vector)
-                final_vector = [str(x) for x in final_vector]
-
-                output_materials.write(','.join(final_vector) + '\n')
-
-
-print('Writing concepts...')
-with open(concepts_file_path, newline='') as concepts_file:
-    with open(output_file_concepts, 'w', newline='') as output_concepts:
-        for i, row in enumerate(concepts_file):
-            if i != 0:
-                tag = int(row[0])
-                
-                concept_text = concepts_text[tag]
-                concept_vector = concepts_model.infer_vector(concept_text)
-
-                final_vector = [tag] + list(concept_vector)
-                final_vector = [str(x) for x in final_vector]
-
-                output_concepts.write(','.join(final_vector) + '\n')
-
-"""

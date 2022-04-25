@@ -28,7 +28,7 @@ args = parser.parse_args()
 data = None
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-with open('../data/data.pkl', 'rb') as pickle_file:
+with open('../data/datav3.pkl', 'rb') as pickle_file:
     data = pickle.load(pickle_file)
 
     data['materials']['x'] = data['materials']['x'].to(torch.float32)
@@ -90,8 +90,8 @@ loss_function = torch.nn.CrossEntropyLoss()
 class GNNEncoder(torch.nn.Module):
     def __init__(self, hidden_channels, out_channels):
         super().__init__()
-        self.conv1 = GATConv((-1, -1), hidden_channels)
-        self.conv2 = GATConv((-1, -1), out_channels)
+        self.conv1 = SAGEConv((-1, -1), hidden_channels)
+        self.conv2 = SAGEConv((-1, -1), out_channels)
 
     def forward(self, x, edge_index):
         x = self.conv1(x, edge_index).relu()
@@ -100,16 +100,16 @@ class GNNEncoder(torch.nn.Module):
 
 
 class EdgeDecoder(torch.nn.Module):
-    def __init__(self, hidden_channels):
+    def __init__(self, out_channels):
         super().__init__()
         # 2 * hidden_channels because we have applied to_hetero
         # with the parameter aggr='sum' which has led to making
         # a 2 * hidden_channels tensor
-        self.lin1 = Linear(2 * hidden_channels, hidden_channels)
+        self.lin1 = Linear(2 * out_channels, out_channels)
 
         # Return a tensor with 2 outputs, one for existing edges
         # the other for non-existing edges
-        self.lin2 = Linear(hidden_channels, 2)
+        self.lin2 = Linear(out_channels, 2)
 
         # Return a softmax of z so we can
         # use it as a probability distribution
@@ -128,11 +128,11 @@ class EdgeDecoder(torch.nn.Module):
 
 
 class Model(torch.nn.Module):
-    def __init__(self, hidden_channels):
+    def __init__(self, hidden_channels, out_channels):
         super().__init__()
-        self.encoder = GNNEncoder(hidden_channels, hidden_channels)
+        self.encoder = GNNEncoder(hidden_channels, out_channels)
         self.encoder = to_hetero(self.encoder, data.metadata(), aggr='sum')
-        self.decoder = EdgeDecoder(hidden_channels)
+        self.decoder = EdgeDecoder(out_channels)
 
     def forward(self, x_dict, edge_index_dict, edge_label_index):
         z_dict = self.encoder(x_dict, edge_index_dict)
@@ -140,7 +140,7 @@ class Model(torch.nn.Module):
         return probabilities, z_dict, k
 
 
-model = Model(hidden_channels=32).to(device)
+model = Model(hidden_channels=64, out_channels=32).to(device)
 
 # Due to lazy initialization, we need to run one model step so the number
 # of parameters can be inferred:
@@ -249,7 +249,7 @@ torch.save({
 
 activation = {}
 
-metrics = ['training', 'test_training', 'test_val', 'test_test']
+metrics = ['training', 'test_val', 'test_test']
 for metric in metrics:
     plt.plot(range(len(losses)), [x[metric] for x in losses])
 
@@ -272,6 +272,7 @@ output, z_dict, k = model(train_data.x_dict, train_data.edge_index_dict,
                           train_data['materials', 'links', 'concepts'].edge_label_index)
 
 print(k.shape)
+print(z_dict, z_dict['materials'].shape)
 """
 model.encoder.conv2.register_forward_hook(get_activation('conv2'))
 output = model(train_data.x_dict, train_data.edge_index_dict,
