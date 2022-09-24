@@ -1,38 +1,9 @@
-# TER : Graph Neural Network
+# Relational Graph Neural Network
 
-- [Sujet du TER](https://drive.google.com/file/d/1ExeekKTDBubTsnt8bu2Je5K84CRLjR6B/view)
-- [Rapport](https://www.overleaf.com/read/hbgfzwzzjfhb)
+A short research project from my 1st year of masters degree. The goal was to try to implement and capture the importance of edges properties in graph neural networks to build a recommendation system capable of helping in building custom and adapted learning path when using open-source educational resources provided by the X5Gon platforms
 
-## Historique
-
-### Semaine du 14 au 21 janvier
-
-Objectif du vendredi : se familiariser avec le sujet
-
-- Initialisation repo github
-- Lecture de [1]
-- Recherche de librairies sur les GNN (Spektral, Tensorflow GNN, PyTorch Geometric)
-
-### Semaine du 21 au 28 janvier
-
-Objectif du vendredi : approfondir le sujet et se renseigner sur l'état de l'art
-
-- Lecture de [2] à [8]
-- Mise en place d'une synchronisation Github - Gitlab
-- Visionnage de vidéos sur les GNNs et leurs applications
-
-### Semaine du 28 au 4 février
-
-Objectif du vendredi : Continuer la bibliographie et visionnage / pratique de tutoriels avec Pytorch Geometric
-
-- Visionnage + entrainement sur les [tutoriels PyTorch Geometric](https://pytorch-geometric.readthedocs.io/en/latest/notes/colabs.html)
-- Lecture de papiers
-
-### Semaine du 4 février au 11 février
-
-Objectif du vendredi : Continuer la bibliographie
-
-- Lecture de papiers (notamment sur les méthodes transX, MNE, DistMult)
+- [Subject](https://drive.google.com/file/d/1ExeekKTDBubTsnt8bu2Je5K84CRLjR6B/view)
+- [Report](https://github.com/mdolr/ter/blob/main/report.pdf)
 
 ## Bibliographie
 
